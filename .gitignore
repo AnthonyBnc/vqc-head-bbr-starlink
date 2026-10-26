@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+
+# Environment and secrets
+.env
+.env.*
+*.pem
+*.key
+
+# Data, runs and model weights (not tracked)
+tcp-cc-starlink-main/
+data/
+runs/
+models/
+checkpoints/
+*.pkl
+*.safetensors
+*.ckpt
+*.pt
+
+# Generated figures
+reports/figures/
+
+# OS and editor files
+.DS_Store
+*~
+*.log
