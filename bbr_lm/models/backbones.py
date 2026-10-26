@@ -1,4 +1,4 @@
-"""Shared local Hugging Face backbone loading for modern model smoke tests."""
+"""Load a local Hugging Face backbone and check its pinned revision."""
 
 from pathlib import Path
 

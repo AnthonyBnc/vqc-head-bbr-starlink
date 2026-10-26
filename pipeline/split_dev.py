@@ -1,4 +1,10 @@
-"""Generate an exploratory deterministic train/validation split by trace."""
+"""Step 2: split the development pool into train and validation traces."""
+
+# Make the repository root importable when this file is run as a script.
+import sys as _sys
+from pathlib import Path as _Path
+
+_sys.path.insert(0, str(_Path(__file__).resolve().parents[1]))
 
 import argparse
 from collections import Counter
@@ -7,8 +13,8 @@ import json
 from pathlib import Path
 import pickle
 
-from utils.splits import stratified_trace_split
-from utils.starlink_preprocessing import write_experience_pool
+from bbr_lm.data.splits import stratified_trace_split
+from bbr_lm.data.preprocessing import write_experience_pool
 
 
 def _summary(pool):

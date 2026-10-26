@@ -1,11 +1,17 @@
-"""Generate an exploratory paper-compatible BBR experience pool."""
+"""Step 1: build the development experience pool from the raw iperf3 traces."""
+
+# Make the repository root importable when this file is run as a script.
+import sys as _sys
+from pathlib import Path as _Path
+
+_sys.path.insert(0, str(_Path(__file__).resolve().parents[1]))
 
 import argparse
 from collections import Counter
 from pathlib import Path
 
-from utils.bbr import action_index_to_gain
-from utils.starlink_preprocessing import (
+from bbr_lm.bbr import action_index_to_gain
+from bbr_lm.data.preprocessing import (
     DEVELOPMENT_LOCATIONS,
     STREAM_FLAGS,
     build_experience_pool,

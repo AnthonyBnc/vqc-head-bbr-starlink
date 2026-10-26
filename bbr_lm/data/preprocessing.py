@@ -11,7 +11,7 @@ import pickle
 
 import numpy as np
 
-from utils.bbr import (
+from bbr_lm.bbr import (
     BW_CRUISE,
     BW_DOWN,
     BW_UP,
@@ -19,7 +19,7 @@ from utils.bbr import (
     action_index_to_gain,
     valid_action_indices,
 )
-from utils.exp_pool import ExperiencePool
+from bbr_lm.data.exp_pool import ExperiencePool
 
 
 DEVELOPMENT_LOCATIONS = ("Ohio", "SaoPaulo", "London", "Mumbai", "Sydney")

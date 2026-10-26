@@ -7,13 +7,19 @@ LFM2.5 VQC head of one training seed on them, then compares chosen seen
 locations with held-out Tokyo on BW_UP (metrics table + boxplots).
 
 Lab machine (needs checkpoints and a GPU):
-    python evaluate_seen_locations.py evaluate --seed 100003 --device cuda
-    python evaluate_seen_locations.py evaluate --seed 400003 --device cuda
+    python pipeline/evaluate_seen.py evaluate --seed 100003 --device cuda
+    python pipeline/evaluate_seen.py evaluate --seed 400003 --device cuda
 
 Any machine (needs only the predictions.csv files, no torch):
-    python evaluate_seen_locations.py plot --seed 100003 --locations Mumbai SaoPaulo
-    python evaluate_seen_locations.py plot --seed 400003 --locations Mumbai SaoPaulo
+    python pipeline/evaluate_seen.py plot --seed 100003 --locations Mumbai SaoPaulo
+    python pipeline/evaluate_seen.py plot --seed 400003 --locations Mumbai SaoPaulo
 """
+# Make the repository root importable when this file is run as a script.
+import sys as _sys
+from pathlib import Path as _Path
+
+_sys.path.insert(0, str(_Path(__file__).resolve().parents[1]))
+
 import argparse
 import gc
 import json
@@ -65,10 +71,10 @@ def load_policy(run_dir, device, local_model_root):
     import torch
     from peft import PeftModel
     from config import cfg
-    from plm_special.backbones import load_local_backbone, resolve_local_revision
-    from plm_special.models.rl_policy import OfflineRLPolicy
-    from plm_special.models.state_encoder import EncoderNetwork
-    from utils.bbr import ACTION_LEVELS
+    from bbr_lm.models.backbones import load_local_backbone, resolve_local_revision
+    from bbr_lm.models.policy import OfflineRLPolicy
+    from bbr_lm.models.state_encoder import EncoderNetwork
+    from bbr_lm.bbr import ACTION_LEVELS
 
     manifest = json.loads((run_dir / "run.manifest.json").read_text(encoding="utf-8"))
     model_key = manifest["model_key"]
@@ -105,11 +111,11 @@ def load_policy(run_dir, device, local_model_root):
 def evaluate_pool(policy, manifest, pool, device):
     import torch
     from torch.utils.data import DataLoader
-    from plm_special.data.dataset import ExperienceDataset
-    from plm_special.utils.utils import process_bbr_batch
-    from utils.bbr import action_index_to_gain
-    from utils.tokyo_evaluation import paper_surrogate_episode
-    from utils.training_metrics import BBRMetricAccumulator
+    from bbr_lm.data.dataset import ExperienceDataset
+    from bbr_lm.training.batching import process_bbr_batch
+    from bbr_lm.bbr import action_index_to_gain
+    from bbr_lm.evaluation.tokyo import paper_surrogate_episode
+    from bbr_lm.training.metrics import BBRMetricAccumulator
 
     dataset = ExperienceDataset(pool, gamma=1.0, scale=1000, max_length=manifest["sequence_length"],
                                 sample_step=manifest["sample_step"])
@@ -154,7 +160,7 @@ def evaluate_pool(policy, manifest, pool, device):
 def cmd_evaluate(args):
     import torch
     from config import cfg
-    from evaluate_tokyo_models import write_records
+    from pipeline.evaluate_tokyo_linear import write_records
 
     with open(VAL_POOL, "rb") as f:
         pool = pickle.load(f)
@@ -190,7 +196,7 @@ def _roll(v, h, op):
 
 
 def surrogate_retx(states, actions, h=10, sharp=5.0, growth=1.5, floor=1e-3, red=0.5):
-    """NumPy copy of utils.tokyo_evaluation.paper_surrogate_episode (retransmissions)."""
+    """NumPy copy of bbr_lm.evaluation.tokyo.paper_surrogate_episode (retransmissions)."""
     s = np.asarray(states, float)
     thr, rx, rtt = s[:, 3], s[:, 4], s[:, 7]
     bcap = _roll(thr, h, lambda v: np.percentile(v, 95))

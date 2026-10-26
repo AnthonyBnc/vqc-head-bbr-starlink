@@ -1,11 +1,11 @@
-import os
+"""Batch preparation and seeding for training and evaluation."""
+
 import random
+
 import numpy as np
-from plm_special.utils.constants import ACTION_LEVELS
-try:  # baselines use a different conda environment without torch, so we need to skip ModuleNotFoundError when runing baselines
-    import torch
-except ModuleNotFoundError:
-    pass
+import torch
+
+from bbr_lm.bbr import ACTION_LEVELS, validate_phase_action
 
 
 def _to_device(tensor, device):
@@ -52,17 +52,6 @@ def _finish_on_device(cpu_tensors, device):
     return states, actions, returns, timesteps, labels
 
 
-def _process_tensors(batch, device):
-    return _finish_on_device(_process_tensors_cpu(batch), device)
-
-
-def process_batch(batch, device='cpu'):
-    """Process a legacy non-BBR batch."""
-    if len(batch) != 4:
-        raise ValueError("process_batch expects states, actions, returns, and timesteps")
-    return _process_tensors(batch, device)
-
-
 def process_bbr_batch(batch, device='cpu'):
     """Process a BBR batch and preserve its per-sample macro-phases."""
     if len(batch) != 5:
@@ -90,7 +79,6 @@ def process_bbr_batch(batch, device='cpu'):
             )
         )
 
-    from utils.bbr import validate_phase_action
     for phase, action in zip(phases, labels):
         validate_phase_action(phase, action)
 
@@ -103,32 +91,3 @@ def set_random_seed(seed):
     torch.cuda.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
     random.seed(seed)
-
-
-def calc_mean_reward(result_files, test_dir, str, skip_first_reward=True):
-    matching = [s for s in result_files if str in s]
-    reward = []
-    count = 0
-    for log_file in matching:
-        count += 1
-        first_line = True
-        with open(test_dir + '/' + log_file, 'r') as f:
-            for line in f:
-                parse = line.split()
-                if len(parse) <= 1:
-                    break
-                if first_line:
-                    first_line = False
-                    if skip_first_reward:
-                        continue
-                reward.append(float(parse[7]))
-    print(count)
-    return np.mean(reward)
-
-
-def clear_dir(directory):
-    file_list = os.listdir(directory)
-    for file in file_list:
-        file_path = os.path.join(directory, file)
-        if os.path.isfile(file_path):
-            os.remove(file_path)

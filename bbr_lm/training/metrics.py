@@ -5,7 +5,7 @@ from collections import Counter
 import torch
 import torch.nn.functional as F
 
-from utils.bbr import ACTION_LEVELS, BBR_PHASES, mask_sequence_logits, validate_phase_action
+from bbr_lm.bbr import ACTION_LEVELS, BBR_PHASES, mask_sequence_logits, validate_phase_action
 
 LOSS_WEIGHTING_NONE = "none"
 LOSS_WEIGHTING_PHASE_BALANCED = "phase_balanced"
@@ -167,7 +167,7 @@ def evaluate_validation_criteria(
     max_up_prediction_share=None,
 ):
     """Evaluate declared reporting thresholds without using them for optimization."""
-    from utils.bbr import BW_UP
+    from bbr_lm.bbr import BW_UP
 
     observed_up_accuracy = metrics["per_phase_accuracy"][BW_UP]
     up_predictions = metrics.get("per_phase_prediction_distribution", {}).get(

@@ -1,6 +1,6 @@
 """Figs. 5-7: BW_UP decisions per location, seeds 100003 and 400003.
 
-Same quantities as evaluate_seen_locations.py `plot` (predicted gains, mean
+Same quantities as pipeline/evaluate_seen.py `plot` (predicted gains, mean
 gain difference per trace, surrogate retransmissions per trace relative to the
 heuristic target), redrawn with the paper's 2x3 layout:
   - "Expert" renamed to "Target" everywhere (the label is a heuristic target),
@@ -20,7 +20,7 @@ import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-import evaluate_seen_locations as esl  # noqa: E402
+import pipeline.evaluate_seen as esl  # noqa: E402
 
 import matplotlib  # noqa: E402
 matplotlib.use("Agg")

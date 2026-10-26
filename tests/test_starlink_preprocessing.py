@@ -6,8 +6,8 @@ import unittest
 
 import numpy as np
 
-from utils.bbr import BW_CRUISE, BW_DOWN, BW_UP, action_index_to_gain, validate_phase_action
-from utils.starlink_preprocessing import (
+from bbr_lm.bbr import BW_CRUISE, BW_DOWN, BW_UP, action_index_to_gain, validate_phase_action
+from bbr_lm.data.preprocessing import (
     PaperPreprocessingConfig,
     build_experience_pool,
     build_held_out_experience_pool,

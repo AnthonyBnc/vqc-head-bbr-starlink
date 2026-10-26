@@ -4,9 +4,9 @@ import unittest
 import torch
 from torch import nn
 
-from plm_special.models.rl_policy import OfflineRLPolicy
-from plm_special.models.state_encoder import EncoderNetwork
-from utils.bbr import ACTION_LEVELS
+from bbr_lm.models.policy import OfflineRLPolicy
+from bbr_lm.models.state_encoder import EncoderNetwork
+from bbr_lm.bbr import ACTION_LEVELS
 
 
 class DummyBackbone(nn.Module):

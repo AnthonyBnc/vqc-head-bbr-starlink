@@ -1,9 +1,15 @@
-"""Freeze the four completed under-400M checkpoints before opening Tokyo."""
+"""Step 4: hash and freeze the final checkpoints before Tokyo is opened."""
+
+# Make the repository root importable when this file is run as a script.
+import sys as _sys
+from pathlib import Path as _Path
+
+_sys.path.insert(0, str(_Path(__file__).resolve().parents[1]))
 
 import argparse
 from pathlib import Path
 
-from utils.checkpoint_freeze import build_freeze_manifest, write_json
+from bbr_lm.evaluation.checkpoint_freeze import build_freeze_manifest, write_json
 
 
 MODEL_KEYS = (

@@ -5,7 +5,7 @@ import unittest
 
 import torch
 
-from train_modern_lora import (
+from pipeline.train import (
     load_resume_record,
     validate_resume_compatibility,
     validate_resume_lora,

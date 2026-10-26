@@ -30,7 +30,7 @@ import json
 
 import matplotlib.pyplot as plt
 
-from under400m_chart_common import DISPLAY, ROOT
+from chart_style import DISPLAY, ROOT
 
 NINE_MODEL_DATA = ROOT / "reports" / "assets" / "nine_model_comparison.json"
 FIG_DIR_100EPOCH = ROOT / "reports" / "figures" / "100epoch"
@@ -53,7 +53,7 @@ OURS_COLOR = "#4C72B0"
 PAPER_COLOR = "#DD8452"
 
 # Font family + base sizes are set once, centrally, in
-# under400m_chart_common.py's plt.rcParams.update(...) block (imported
+# chart_style.py's plt.rcParams.update(...) block (imported
 # below) -- edit font/size there, not here, so both this script and
 # generate_100epoch_line_charts.py stay in sync.
 

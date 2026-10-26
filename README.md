@@ -28,21 +28,46 @@ No head is run as a live congestion controller.
 
 ```text
 .
-|-- generate_bbr_experience_pool.py   # raw iperf3 traces -> development experience pool
-|-- generate_bbr_dev_split.py         # trace-level train/validation split
-|-- train_modern_lora.py              # training entry point (all three heads)
-|-- freeze_tokyo_comparison.py        # hash and freeze final checkpoints
-|-- prepare_tokyo_evaluation.py       # build the held-out Tokyo pool (one-time gate)
-|-- evaluate_tokyo_models.py          # Tokyo evaluation, linear-head backbones
-|-- evaluate_tokyo_gpt_quantum.py     # Tokyo evaluation, VQC head
-|-- run_multiseed_head_comparison.py  # multi-seed train -> freeze -> Tokyo evaluation
-|-- evaluate_seen_locations.py        # validation-trace predictions (Mumbai, Sao Paulo)
-|-- config.py                         # backbone registry with pinned revisions
-|-- utils/                            # action space, phase detection, labels, metrics
-|-- plm_special/                      # encoder, policy, LoRA, linear/VQC/twin heads
-|-- reports/                          # tables and figures used in the paper
-`-- tests/
+|-- bbr_lm/                        # library code
+|   |-- bbr.py                     # 11 pacing gains and phase masks (Eqs. 4, 23)
+|   |-- data/
+|   |   |-- preprocessing.py       # phase detection, target gains, reward (Eqs. 1-14)
+|   |   |-- dataset.py             # windows, reward normalisation, return-to-go (Eqs. 15-16)
+|   |   |-- exp_pool.py            # experience pool
+|   |   `-- splits.py              # trace-level train/validation split
+|   |-- models/
+|   |   |-- state_encoder.py       # per-feature encoder (Eq. 17)
+|   |   |-- policy.py              # token sequence, backbone, action head
+|   |   |-- backbones.py           # local backbone loading
+|   |   `-- lora.py                # LoRA adapters (Eq. 18)
+|   |-- heads/
+|   |   |-- vqc.py                 # VQC head (Eqs. 20-21)
+|   |   `-- classical_twin.py      # classical twin (Eq. 22)
+|   |-- training/
+|   |   |-- metrics.py             # masked cross-entropy and metrics (Eq. 24)
+|   |   |-- batching.py            # batch preparation, seeding
+|   |   `-- sampling.py            # optional window sampling (not used in the paper)
+|   `-- evaluation/
+|       |-- tokyo.py               # held-out evaluation and surrogate model
+|       `-- checkpoint_freeze.py   # checkpoint hashing
+|-- pipeline/                      # command-line steps, in the order they are run
+|   |-- build_pool.py              # 1. raw traces -> development pool
+|   |-- split_dev.py               # 2. train/validation split
+|   |-- train.py                   # 3. train one model
+|   |-- freeze_checkpoints.py      # 4. freeze final checkpoints
+|   |-- prepare_tokyo.py           # 5. build the Tokyo pool (one-time gate)
+|   |-- run_multiseed.py           # 6. multi-seed head comparison
+|   |-- evaluate_tokyo_linear.py   #    Tokyo evaluation, linear-head backbones
+|   |-- evaluate_tokyo_vqc.py      #    Tokyo evaluation, VQC head
+|   `-- evaluate_seen.py           #    predictions on validation traces (Mumbai, Sao Paulo)
+|-- reports/                       # tables and figures of the paper
+|-- tests/
+|-- config.py                      # backbones (pinned revisions) and defaults
+`-- requirements.txt
 ```
+
+The linear head is `head_type="classical"` in the code, the classical twin is
+`"classical_twin"`, and the VQC head is `"quantum"`.
 
 ## Setup
 
@@ -52,8 +77,8 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-Backbones are loaded from a local directory set by `LM_BBR_LOCAL_MODEL_ROOT`.
-The Hugging Face IDs and pinned revisions are listed in `config.py`:
+Backbones are loaded from `LM_BBR_LOCAL_MODEL_ROOT/<local_dir>`. The Hugging
+Face IDs and pinned revisions are in `config.py`:
 
 | Backbone | Hugging Face ID |
 |---|---|
@@ -75,14 +100,16 @@ tcp-cc-starlink-main/<stream-group>/<Location>/**/bbr_<Location>__*.json
 where `<stream-group>` is one of `downlink-sequential-logs`,
 `uplink-sequential-logs`, `downlink-competitive-logs` and
 `uplink-competitive-logs`. Tokyo is held out: the development pipeline refuses
-Tokyo traces, and the Tokyo pool can only be built through
-`prepare_tokyo_evaluation.py`.
+Tokyo traces, and the Tokyo pool can only be built with
+`pipeline/prepare_tokyo.py`.
 
 ## Running the pipeline
 
+Run every command from the repository root.
+
 ```bash
 # 1. Development experience pool (Ohio, Sao Paulo, London, Mumbai, Sydney)
-python generate_bbr_experience_pool.py \
+python pipeline/build_pool.py \
   --raw-root tcp-cc-starlink-main \
   --output data/processed/dev_pool.pkl \
   --locations Ohio SaoPaulo London Mumbai Sydney \
@@ -91,36 +118,36 @@ python generate_bbr_experience_pool.py \
   --max-files 1000
 
 # 2. Trace-level split (2 of 10 traces per location and stream group for validation)
-python generate_bbr_dev_split.py \
+python pipeline/split_dev.py \
   --input data/processed/dev_pool.pkl \
   --output-dir data/processed/slm_bbr_w10_eq2_3_dev_split_seed100003 \
   --seed 100003
 
-# 3. Train one model (example: LFM2.5-350M with the VQC head)
-python train_modern_lora.py \
-  --model-key lfm2_5_350m --output-dir runs/lfm2_5_350m_quantum \
-  --rank 128 --alpha 32 --dropout 0.05 --epochs 100 \
-  --sequence-length 20 --sample-step 20 --learning-rate 1e-4 \
-  --weight-decay 1e-4 --grad-accum-steps 32 --seed 100003 \
+# 3. Train one model (defaults: LFM2.5-350M, r = 128, alpha = 32; example with the VQC head)
+python pipeline/train.py \
+  --output-dir runs/lfm2_5_350m_quantum --epochs 100 --seed 100003 \
   --head-type quantum --n-qubits 8 --quantum-depth 1 \
   --quantum-ansatz trainable_ry_layers --head-input-layernorm \
   --bottleneck-temperature 4 --quantum-angle-scale pi --quantum-backend torch
 
-# 4. Freeze checkpoints, then open the Tokyo gate once
-python freeze_tokyo_comparison.py --run-dir runs/lfm2_5_350m_quantum
-python prepare_tokyo_evaluation.py --tokyo-location-flag 5 \
+# 4-5. Freeze the checkpoints, then open the Tokyo gate once
+python pipeline/freeze_checkpoints.py --run-dir runs/lfm2_5_350m_quantum
+python pipeline/prepare_tokyo.py --tokyo-location-flag 5 \
   --acknowledge-final-held-out-evaluation
 
-# 5. Multi-seed comparison of the three heads (train, freeze, evaluate on Tokyo)
-python run_multiseed_head_comparison.py run --dry-run
-python run_multiseed_head_comparison.py run --device cuda --parallel 4
+# 6. Multi-seed comparison of the three heads (train, freeze, evaluate on Tokyo)
+python pipeline/run_multiseed.py run --dry-run
+python pipeline/run_multiseed.py run --device cuda --parallel 4
 python reports/summarize_multiseed_head_comparison.py
 ```
 
-The exact training arguments of each head are in `COMMON_TRAIN_ARGS` and
-`HEAD_TRAIN_ARGS` in `run_multiseed_head_comparison.py`. The final-epoch
-checkpoint is always used; Tokyo is never used for training, model selection or
-any setting.
+The exact training arguments of each head are `COMMON_TRAIN_ARGS` and
+`HEAD_TRAIN_ARGS` in `pipeline/run_multiseed.py`. The final-epoch checkpoint is
+always used; Tokyo is never used for training, model selection or any setting.
+
+The experience pools are checked against the SHA-256 values in
+`pipeline/run_multiseed.py`. Pools rebuilt from the same traces with this code are
+expected to match them; the runner refuses pools that do not.
 
 ## Reproducing the paper
 
@@ -128,7 +155,7 @@ any setting.
 |---|---|
 | Table IV (Tokyo results, four seeds) | `reports/summarize_multiseed_head_comparison.py` |
 | Macro-F1, balanced accuracy and bootstrap CIs (Section V-B) | `reports/compute_per_action_metrics.py` |
-| Table V (sending rate, surrogate retransmissions) | per-interval surrogate values written to each `predictions.csv` by `utils/tokyo_evaluation.py` |
+| Table V (sending rate, surrogate retransmissions) | per-interval surrogate values written to each `predictions.csv` by `bbr_lm/evaluation/tokyo.py` |
 | Fig. 2 (VQC circuit) | `reports/generate_vqc_circuit_figure.py` |
 | Fig. 3 (trace locations) | `reports/generate_locations_map.py` |
 | Fig. 4 (training loss and accuracy) | `reports/generate_100epoch_line_charts.py` |

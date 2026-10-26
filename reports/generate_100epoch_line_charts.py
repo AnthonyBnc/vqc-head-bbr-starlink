@@ -19,7 +19,7 @@ import json
 
 import matplotlib.pyplot as plt
 
-from under400m_chart_common import DISPLAY, LINE_STYLE, ROOT
+from chart_style import DISPLAY, LINE_STYLE, ROOT
 
 DIGITIZED_PAPER_DATA = ROOT / "reports" / "assets" / "digitized_paper_fig7.json"
 FIG_DIR_100EPOCH = ROOT / "reports" / "figures" / "100epoch"

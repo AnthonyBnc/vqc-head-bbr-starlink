@@ -2,7 +2,7 @@
 
 from torch import nn
 
-from utils.bbr import ACTION_LEVELS
+from bbr_lm.bbr import ACTION_LEVELS
 
 
 class ClassicalBottleneckActionHead(nn.Module):

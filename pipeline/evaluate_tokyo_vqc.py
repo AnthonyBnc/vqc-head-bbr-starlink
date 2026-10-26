@@ -1,13 +1,19 @@
-"""One-time Tokyo evaluation for the frozen gpt_quantum checkpoint.
+"""Evaluate a frozen VQC-head checkpoint on the Tokyo pool.
 
-Reuses utils.tokyo_evaluation.evaluate_frozen_policy (head-type-agnostic) and
+Reuses bbr_lm.evaluation.tokyo.evaluate_frozen_policy (head-type-agnostic) and
 writes output in the same predictions.csv / result.manifest.json shape as
-evaluate_tokyo_models.py, so it can sit alongside the four gpt_classical
+pipeline/evaluate_tokyo_linear.py, so it can sit alongside the four gpt_classical
 results under the same tokyo_8model_comparison_v1/results/ tree.
 
 Run: LM_BBR_LOCAL_MODEL_ROOT=/path/to/models python \
-  evaluate_tokyo_gpt_quantum.py --execute-final-held-out-evaluation
+  pipeline/evaluate_tokyo_vqc.py --execute-final-held-out-evaluation
 """
+
+# Make the repository root importable when this file is run as a script.
+import sys as _sys
+from pathlib import Path as _Path
+
+_sys.path.insert(0, str(_Path(__file__).resolve().parents[1]))
 
 import argparse
 import json
@@ -18,14 +24,14 @@ import torch
 from peft import PeftModel
 
 from config import cfg
-from plm_special.backbones import load_local_backbone, resolve_local_revision
-from plm_special.data.dataset import ExperienceDataset
-from plm_special.models.rl_policy import OfflineRLPolicy
-from plm_special.models.state_encoder import EncoderNetwork
-from utils.bbr import ACTION_LEVELS
-from utils.checkpoint_freeze import file_sha256, write_json
-from utils.tokyo_evaluation import evaluate_frozen_policy
-from evaluate_tokyo_models import write_records
+from bbr_lm.models.backbones import load_local_backbone, resolve_local_revision
+from bbr_lm.data.dataset import ExperienceDataset
+from bbr_lm.models.policy import OfflineRLPolicy
+from bbr_lm.models.state_encoder import EncoderNetwork
+from bbr_lm.bbr import ACTION_LEVELS
+from bbr_lm.evaluation.checkpoint_freeze import file_sha256, write_json
+from bbr_lm.evaluation.tokyo import evaluate_frozen_policy
+from pipeline.evaluate_tokyo_linear import write_records
 
 
 def _hidden_size(model_config):

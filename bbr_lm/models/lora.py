@@ -1,4 +1,4 @@
-"""Validated family-specific LoRA construction for modern BBR backbones."""
+"""LoRA adapters for the backbones (Eq. 18), with a check on the adapted modules."""
 
 from peft import LoraConfig, PeftModel, TaskType, get_peft_model
 

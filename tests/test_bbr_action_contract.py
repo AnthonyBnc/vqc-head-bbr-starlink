@@ -2,8 +2,7 @@ import math
 import pickle
 import unittest
 
-from plm_special.utils.constants import ACTION_LEVELS as LEGACY_ACTION_LEVELS
-from utils.bbr import (
+from bbr_lm.bbr import (
     ACTION_LEVELS,
     BBR_PHASES,
     BW_CRUISE,
@@ -18,13 +17,12 @@ from utils.bbr import (
     validate_action_index,
     validate_phase_action,
 )
-from utils.exp_pool import ExperiencePool
+from bbr_lm.data.exp_pool import ExperiencePool
 
 
 class BBRActionContractTests(unittest.TestCase):
     def test_action_mapping_is_the_locked_eleven_gain_contract(self):
         self.assertEqual(ACTION_LEVELS, 11)
-        self.assertEqual(LEGACY_ACTION_LEVELS, ACTION_LEVELS)
         self.assertEqual(
             PACING_GAINS,
             (0.90, 0.92, 0.94, 0.96, 0.98, 1.00, 1.05, 1.10, 1.15, 1.20, 1.25),

@@ -12,18 +12,18 @@ venv/
 *.key
 
 # Data, runs and model weights (not tracked)
-tcp-cc-starlink-main/
-data/
-runs/
-models/
-checkpoints/
+/tcp-cc-starlink-main/
+/data/
+/runs/
+/models/
+/checkpoints/
 *.pkl
 *.safetensors
 *.ckpt
 *.pt
 
 # Generated figures
-reports/figures/
+/reports/figures/
 
 # OS and editor files
 .DS_Store

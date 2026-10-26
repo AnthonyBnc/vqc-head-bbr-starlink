@@ -2,8 +2,8 @@ import unittest
 
 import torch
 
-from utils.bbr import BW_CRUISE, BW_DOWN, BW_UP, mask_sequence_logits
-from utils.training_metrics import (
+from bbr_lm.bbr import BW_CRUISE, BW_DOWN, BW_UP, mask_sequence_logits
+from bbr_lm.training.metrics import (
     BBRMetricAccumulator,
     LOSS_WEIGHTING_PHASE_BALANCED,
     evaluate_validation_criteria,

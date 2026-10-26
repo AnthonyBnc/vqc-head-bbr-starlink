@@ -5,8 +5,8 @@ from copy import deepcopy
 from hashlib import sha256
 from pathlib import PurePosixPath
 
-from utils.exp_pool import ExperiencePool
-from utils.starlink_preprocessing import (
+from bbr_lm.data.exp_pool import ExperiencePool
+from bbr_lm.data.preprocessing import (
     DEVELOPMENT_LOCATIONS,
     HELD_OUT_LOCATION,
     STREAM_FLAGS,

@@ -1,4 +1,10 @@
-"""Prepare the one-time Tokyo held-out Experience Pool after protocol freeze."""
+"""Step 5: build the held-out Tokyo experience pool (one-time gate)."""
+
+# Make the repository root importable when this file is run as a script.
+import sys as _sys
+from pathlib import Path as _Path
+
+_sys.path.insert(0, str(_Path(__file__).resolve().parents[1]))
 
 import argparse
 from collections import Counter
@@ -6,9 +12,9 @@ from datetime import datetime, timezone
 import json
 from pathlib import Path
 
-from plm_special.data.dataset import ExperienceDataset
-from utils.checkpoint_freeze import file_sha256, verify_frozen_entry, write_json
-from utils.starlink_preprocessing import (
+from bbr_lm.data.dataset import ExperienceDataset
+from bbr_lm.evaluation.checkpoint_freeze import file_sha256, verify_frozen_entry, write_json
+from bbr_lm.data.preprocessing import (
     HELD_OUT_LOCATION,
     STREAM_FLAGS,
     build_held_out_experience_pool,

@@ -1,4 +1,10 @@
-"""Train one modern LoRA BBR policy on the shared development split."""
+"""Step 3: train one LoRA-adapted policy with a linear, VQC or classical-twin head."""
+
+# Make the repository root importable when this file is run as a script.
+import sys as _sys
+from pathlib import Path as _Path
+
+_sys.path.insert(0, str(_Path(__file__).resolve().parents[1]))
 
 import argparse
 from datetime import datetime, timezone
@@ -17,19 +23,19 @@ from torch.optim.lr_scheduler import LambdaLR
 from torch.utils.data import DataLoader, Subset
 
 from config import cfg
-from plm_special.backbones import load_local_backbone, resolve_local_revision
-from plm_special.data.dataset import ExperienceDataset
-from plm_special.models.rl_policy import OfflineRLPolicy
-from plm_special.models.state_encoder import EncoderNetwork
-from plm_special.utils.utils import process_bbr_batch, set_random_seed
-from utils.bbr import ACTION_LEVELS
-from utils.training_metrics import (
+from bbr_lm.models.backbones import load_local_backbone, resolve_local_revision
+from bbr_lm.data.dataset import ExperienceDataset
+from bbr_lm.models.policy import OfflineRLPolicy
+from bbr_lm.models.state_encoder import EncoderNetwork
+from bbr_lm.training.batching import process_bbr_batch, set_random_seed
+from bbr_lm.bbr import ACTION_LEVELS
+from bbr_lm.training.metrics import (
     BBRMetricAccumulator,
     LOSS_WEIGHTING_OPTIONS,
     LOSS_WEIGHTING_NONE,
     evaluate_validation_criteria,
 )
-from utils.training_sampling import (
+from bbr_lm.training.sampling import (
     TRAINING_SAMPLING_OPTIONS,
     TRAINING_SAMPLING_ORIGINAL,
     build_training_window_indices,
@@ -409,12 +415,12 @@ def git_metadata():
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model-key", default="lfm2_5_2_6b", choices=tuple(cfg.modern_model_registry))
+    parser.add_argument("--model-key", default="lfm2_5_350m", choices=tuple(cfg.modern_model_registry))
     parser.add_argument("--split-dir", type=Path, default=DEFAULT_SPLIT_DIR)
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--device", default="mps" if torch.backends.mps.is_available() else "cpu")
     parser.add_argument("--dtype", choices=("auto", "float16", "bfloat16", "float32"), default="auto")
-    parser.add_argument("--rank", type=int, default=8)
+    parser.add_argument("--rank", type=int, default=128)
     parser.add_argument("--alpha", type=int, default=32)
     parser.add_argument("--dropout", type=float, default=0.05)
     parser.add_argument(
@@ -598,7 +604,7 @@ def main():
     # Place the large weights before materialising both pool objects. On 16 GB
     # unified-memory Macs this avoids fragmentation in the Metal allocator.
     backbone, model_config = load_local_backbone(model_path, device=args.device, dtype=dtype)
-    from plm_special.lora import (
+    from bbr_lm.models.lora import (
         attach_modern_lora,
         load_modern_lora_checkpoint,
         parameter_counts,

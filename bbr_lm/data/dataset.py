@@ -1,0 +1,246 @@
+"""Window dataset over an experience pool, with normalised rewards and return-to-go (Eqs. 15-16)."""
+
+import numpy as np
+from torch.utils.data import Dataset
+
+from bbr_lm.bbr import validate_phase_action
+
+
+def episode_window_starts(dones, max_length, sample_step):
+    """Return window starts that never cross an episode boundary."""
+    if max_length < 1:
+        raise ValueError("max_length must be at least 1")
+    if sample_step < 1:
+        raise ValueError("sample_step must be at least 1")
+    if not dones:
+        return []
+    if not dones[-1]:
+        raise ValueError("The final experience must end an episode")
+
+    starts = []
+    episode_start = 0
+    for index, done in enumerate(dones):
+        if not done:
+            continue
+        episode_end = index + 1
+        final_start = episode_end - max_length
+        if final_start >= episode_start:
+            starts.extend(range(episode_start, final_start + 1, sample_step))
+        episode_start = episode_end
+    return starts
+
+
+def discount_returns(rewards, gamma, scale):
+    """
+    Compute discounted cumulative returns from rewards.
+    
+    Args:
+        rewards: list or array of reward values
+        gamma: discount factor (typically 0 to 1)
+        scale: scaling factor to normalize returns (should be > 0)
+    
+    Returns:
+        list of discounted returns
+    """
+    # Input validation
+    if not rewards or len(rewards) == 0:
+        return []
+    
+    if scale == 0:
+        raise ValueError(f"Scale cannot be zero. Got scale={scale}")
+    
+    if gamma < 0 or gamma > 1:
+        raise ValueError(f"Gamma should be between 0 and 1. Got gamma={gamma}")
+    
+    # Convert to numpy array for easier handling
+    rewards_arr = np.array(rewards, dtype=np.float32)
+    
+    # Check for invalid values in rewards
+    if np.any(np.isnan(rewards_arr)):
+        print("[WARNING] NaN values found in rewards")
+        rewards_arr = np.nan_to_num(rewards_arr, nan=0.0)
+    
+    if np.any(np.isinf(rewards_arr)):
+        print("[WARNING] Inf values found in rewards")
+        rewards_arr = np.nan_to_num(rewards_arr, posinf=1e6, neginf=-1e6)
+    
+    # Compute discounted returns
+    returns = np.zeros_like(rewards_arr)
+    returns[-1] = rewards_arr[-1]
+    
+    for i in reversed(range(len(rewards_arr) - 1)):
+        returns[i] = rewards_arr[i] + gamma * returns[i + 1]
+        
+        # Check for overflow/underflow
+        if np.isnan(returns[i]) or np.isinf(returns[i]):
+            print(f"[WARNING] NaN/Inf detected at index {i}: {returns[i]}")
+            print(f"  rewards[i]={rewards_arr[i]}, gamma={gamma}, returns[i+1]={returns[i + 1]}")
+            returns[i] = np.clip(returns[i], -1e6, 1e6)
+    
+    # Scale down returns
+    returns = returns / scale
+    
+    # Final check and clip extreme values
+    if np.any(np.isnan(returns)):
+        print("[WARNING] NaN values in final returns after scaling")
+        returns = np.nan_to_num(returns, nan=0.0)
+    
+    if np.any(np.isinf(returns)):
+        print("[WARNING] Inf values in final returns after scaling")
+        returns = np.clip(returns, -1e6, 1e6)
+    
+    return returns.tolist()
+
+
+class ExperienceDataset(Dataset):
+    """
+    A dataset class that wraps the experience pool.
+    """
+    def __init__(self, exp_pool, gamma=1., scale=10, max_length=30, sample_step=None) -> None:
+        """
+        :param exp_pool: the experience pool
+        :param gamma: the reward discounted factor
+        :param scale: the factor to scale the return
+        :param max_length: the w value in our paper, see the paper for details.
+        """
+        if sample_step is None:
+            sample_step = max_length
+
+        self.exp_pool = exp_pool
+        self.exp_pool_size = len(exp_pool)
+        self.gamma = gamma
+        self.scale = scale
+        self.max_length = max_length
+
+        self.returns = []
+        self.timesteps = []
+        self.rewards = []
+
+        self.exp_dataset_info = {}
+
+        self._validate_exp_pool()
+        self._normalize_rewards()
+        self._compute_returns()
+        self.exp_dataset_info.update({
+            'max_action': max(self.actions),
+            'min_action': min(self.actions)
+        })
+
+        self.dataset_indices = episode_window_starts(
+            self.dones,
+            max_length=max_length,
+            sample_step=min(sample_step, max_length),
+        )
+        if not self.dataset_indices:
+            raise ValueError("No complete sequence windows fit within the experience-pool episodes")
+    
+    def sample_batch(self, batch_size=1, batch_indices=None):
+        """
+        Sample a batch of data from the experience pool.
+        :param batch_size: the size of a batch. For CJS task, batch_size should be set to 1 due to the unstructural data format.
+        """
+        if batch_indices is None:
+            batch_indices = np.random.choice(len(self.dataset_indices), size=batch_size)
+        batch_states, batch_actions, batch_returns, batch_timesteps, batch_phases = [], [], [], [], []
+        for i in range(batch_size):
+            states, actions, returns, timesteps, phases = self[batch_indices[i]]
+            batch_states.append(states)
+            batch_actions.append(actions)
+            batch_returns.append(returns)
+            batch_timesteps.append(timesteps)
+            batch_phases.append(phases)
+        return batch_states, batch_actions, batch_returns, batch_timesteps, batch_phases
+    
+    @property
+    def states(self):
+        return self.exp_pool.states
+
+    @property
+    def actions(self):
+        return self.exp_pool.actions
+    
+    @property
+    def dones(self):
+        return self.exp_pool.dones
+
+    @property
+    def phases(self):
+        return self.exp_pool.phases
+    
+    def __len__(self):
+        return len(self.dataset_indices)
+    
+    def __getitem__(self, index):
+        start = self.dataset_indices[index]
+        end = start + self.max_length
+        return (
+            self.states[start:end],
+            self.actions[start:end],
+            self.returns[start:end],
+            self.timesteps[start:end],
+            self.phases[start:end],
+        )
+
+    def _validate_exp_pool(self):
+        phases = getattr(self.exp_pool, 'phases', None)
+        if phases is None:
+            raise ValueError(
+                "Experience pool has no BBR phase metadata. Regenerate it with the "
+                "paper-defined phase detector before training or evaluation."
+            )
+
+        field_lengths = {
+            'states': len(self.exp_pool.states),
+            'actions': len(self.exp_pool.actions),
+            'rewards': len(self.exp_pool.rewards),
+            'dones': len(self.exp_pool.dones),
+            'phases': len(phases),
+        }
+        if len(set(field_lengths.values())) != 1:
+            raise ValueError("Experience pool fields have different lengths: {}".format(field_lengths))
+        if self.exp_pool_size == 0:
+            raise ValueError("Experience pool is empty")
+
+        for sample_index, (phase, action) in enumerate(zip(phases, self.exp_pool.actions)):
+            try:
+                validate_phase_action(phase, action)
+            except (TypeError, ValueError) as exc:
+                raise ValueError(
+                    "Invalid phase/action pair at experience index {}: {}".format(
+                        sample_index, exc
+                    )
+                ) from exc
+
+    def _normalize_rewards(self):
+        min_reward, max_reward = min(self.exp_pool.rewards), max(self.exp_pool.rewards)
+        rewards = (np.array(self.exp_pool.rewards) - min_reward) / (max_reward - min_reward)
+        self.rewards = rewards.tolist()
+        print(f"[INFO] Normalized rewards with min_reward={min_reward}, max_reward={max_reward}")
+        self.exp_dataset_info.update({
+            'max_reward': max_reward,
+            'min_reward': min_reward,
+        })
+
+    def _compute_returns(self):
+        """
+        Compute returns (discounted cumulative rewards)
+        """
+        episode_start = 0
+        while episode_start < self.exp_pool_size:
+            try:
+                episode_end = self.dones.index(True, episode_start) + 1
+            except ValueError:
+                episode_end = self.exp_pool_size
+            self.returns.extend(discount_returns(self.rewards[episode_start:episode_end], self.gamma, self.scale))
+            self.timesteps += list(range(episode_end - episode_start))
+            episode_start = episode_end
+        assert len(self.returns) == len(self.timesteps)
+        self.exp_dataset_info.update({
+            # for normalizing rewards/returns
+            'max_return': max(self.returns),
+            'min_return': min(self.returns),
+
+            # to help determine the maximum size of timesteps embedding
+            'min_timestep': min(self.timesteps),
+            'max_timestep': max(self.timesteps),
+        })

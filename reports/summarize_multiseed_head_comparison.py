@@ -4,7 +4,7 @@ Evaluation-only (evidence class: measured_final). Reads frozen predictions.csv
 files; loads, trains, selects or tunes nothing.
 
 Seeds: 100003 from four_model_100epoch_v1 (the run reported in the paper) plus
-every seed evaluated by run_multiseed_head_comparison.py. A seed is included
+every seed evaluated by pipeline/run_multiseed.py. A seed is included
 only when BOTH heads have a Tokyo result, so every comparison is paired.
 
 Note for the paper: the seed-100003 gpt_quantum run used the Qiskit
@@ -25,7 +25,7 @@ ROOT = Path(__file__).resolve().parents[1]
 UP = [1.05, 1.10, 1.15, 1.20, 1.25]
 ROLES = {"classical": "gpt_classical", "quantum": "gpt_quantum"}
 # Optional classical control with the same 1024 -> 8 -> 11 path as the quantum
-# head (run_multiseed_head_comparison.py --heads classical_twin). It is added
+# head (pipeline/run_multiseed.py --heads classical_twin). It is added
 # for a seed only when that seed already has a paired classical/quantum result.
 TWIN = "classical_twin"
 ALL_ROLES = dict(ROLES, **{TWIN: "gpt_classical_twin"})

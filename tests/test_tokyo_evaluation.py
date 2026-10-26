@@ -3,10 +3,10 @@ import unittest
 import numpy as np
 import torch
 
-from plm_special.data.dataset import ExperienceDataset
-from utils.bbr import BW_CRUISE, BW_DOWN, BW_UP
-from utils.exp_pool import ExperiencePool
-from utils.tokyo_evaluation import evaluate_frozen_policy, paper_surrogate_episode
+from bbr_lm.data.dataset import ExperienceDataset
+from bbr_lm.bbr import BW_CRUISE, BW_DOWN, BW_UP
+from bbr_lm.data.exp_pool import ExperiencePool
+from bbr_lm.evaluation.tokyo import evaluate_frozen_policy, paper_surrogate_episode
 
 
 class DummyPolicy(torch.nn.Module):

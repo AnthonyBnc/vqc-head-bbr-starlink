@@ -2,8 +2,8 @@ import unittest
 
 import torch
 
-from plm_special.quantum_head import QuantumActionHead
-from utils.bbr import ACTION_LEVELS
+from bbr_lm.heads.vqc import QuantumActionHead
+from bbr_lm.bbr import ACTION_LEVELS
 
 
 class QuantumHeadTests(unittest.TestCase):
@@ -123,7 +123,7 @@ class QuantumHeadTests(unittest.TestCase):
 
     def test_checkpoints_are_interchangeable_between_backends(self):
         """A run started on one backend must be resumable on the other under
-        strict=True -- train_modern_lora loads task modules strictly, and
+        strict=True -- pipeline.train loads task modules strictly, and
         Qiskit's TorchConnector carries a duplicate `_weights` key that the
         torch backend has to both accept and emit."""
         shared = dict(input_dim=16, n_qubits=4, depth=2)

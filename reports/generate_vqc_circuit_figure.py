@@ -1,6 +1,6 @@
 """Fig. 2: VQC head circuit with the four stages labelled.
 
-Matches plm_special/quantum_head.py with n_q = 8, D = 1, no re-uploading:
+Matches bbr_lm/heads/vqc.py with n_q = 8, D = 1, no re-uploading:
 R_Y(theta_i) angle encoding on |0>, one trainable R_Y(omega_i) per qubit,
 CNOT(i, (i+1) mod n_q) for i = 0..n_q-1 (ring), Pauli-Z expectation per qubit.
 

@@ -27,7 +27,7 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from utils.starlink_preprocessing import (  # noqa: E402
+from bbr_lm.data.preprocessing import (  # noqa: E402
     HELD_OUT_LOCATION,
     STREAM_FLAGS,
     build_held_out_experience_pool,
@@ -41,14 +41,14 @@ REFERENCE_PREDICTIONS = ROOT / (
 
 
 def discover_tokyo_bbr_traces(raw_root):
-    """Use the exact function from prepare_tokyo_evaluation.py (single source of
+    """Use the exact function from pipeline/prepare_tokyo.py (single source of
     truth) without importing that module, which needs PyTorch."""
-    source = (ROOT / "prepare_tokyo_evaluation.py").read_text(encoding="utf-8")
+    source = (ROOT / "pipeline/prepare_tokyo.py").read_text(encoding="utf-8")
     tree = ast.parse(source)
     node = next(n for n in tree.body
                 if isinstance(n, ast.FunctionDef) and n.name == "discover_tokyo_bbr_traces")
     namespace = {"Path": Path, "STREAM_FLAGS": STREAM_FLAGS, "HELD_OUT_LOCATION": HELD_OUT_LOCATION}
-    exec(compile(ast.Module(body=[node], type_ignores=[]), "prepare_tokyo_evaluation.py", "exec"), namespace)
+    exec(compile(ast.Module(body=[node], type_ignores=[]), "pipeline/prepare_tokyo.py", "exec"), namespace)
     return namespace["discover_tokyo_bbr_traces"](raw_root)
 
 

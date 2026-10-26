@@ -2,7 +2,7 @@ import unittest
 
 import torch
 
-from plm_special.classical_head import ClassicalBottleneckActionHead
+from bbr_lm.heads.classical_twin import ClassicalBottleneckActionHead
 
 
 class ClassicalHeadTests(unittest.TestCase):

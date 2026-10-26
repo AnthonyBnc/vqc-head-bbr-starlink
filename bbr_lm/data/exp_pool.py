@@ -1,4 +1,6 @@
-from utils.bbr import validate_phase, validate_phase_action
+"""Experience pool: states, target gains, rewards and phases of each interval."""
+
+from bbr_lm.bbr import validate_phase, validate_phase_action
 
 
 class ExperiencePool:
@@ -53,3 +55,10 @@ class ExperiencePool:
         self.phases = state.get('phases')
         self.sample_ids = state.get('sample_ids', [None] * len(self.states))
         self.metadata = state.get('metadata', {})
+
+
+# Experience pools are stored with pickle, which records the module path of
+# the class. The pools used in the paper were written from ``utils.exp_pool``,
+# and the pipeline checks their SHA-256 values. Keeping that module path makes
+# old pools loadable and keeps newly built pools byte-identical to them.
+ExperiencePool.__module__ = "utils.exp_pool"

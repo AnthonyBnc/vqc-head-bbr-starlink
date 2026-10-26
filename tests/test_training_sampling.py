@@ -4,8 +4,8 @@ from pathlib import Path
 import tempfile
 import unittest
 
-from utils.bbr import BW_CRUISE, BW_DOWN, BW_UP
-from utils.training_sampling import (
+from bbr_lm.bbr import BW_CRUISE, BW_DOWN, BW_UP
+from bbr_lm.training.sampling import (
     TRAINING_SAMPLING_CRUISE80,
     TRAINING_SAMPLING_UP_FOCUS,
     build_training_window_indices,

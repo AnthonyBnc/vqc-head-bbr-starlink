@@ -2,11 +2,11 @@ import unittest
 
 import numpy as np
 
-from plm_special.data.dataset import episode_window_starts
-from utils.bbr import BW_CRUISE
-from utils.exp_pool import ExperiencePool
-from utils.splits import stratified_trace_split
-from utils.starlink_preprocessing import DEVELOPMENT_LOCATIONS, STREAM_FLAGS
+from bbr_lm.data.dataset import episode_window_starts
+from bbr_lm.bbr import BW_CRUISE
+from bbr_lm.data.exp_pool import ExperiencePool
+from bbr_lm.data.splits import stratified_trace_split
+from bbr_lm.data.preprocessing import DEVELOPMENT_LOCATIONS, STREAM_FLAGS
 
 
 class SplitAndSequenceTests(unittest.TestCase):

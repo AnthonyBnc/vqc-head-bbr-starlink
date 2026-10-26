@@ -14,7 +14,7 @@ from qiskit_machine_learning.connectors import TorchConnector
 from qiskit_machine_learning.neural_networks import EstimatorQNN
 from torch import nn
 
-from utils.bbr import ACTION_LEVELS
+from bbr_lm.bbr import ACTION_LEVELS
 
 
 ANSATZ_TRAINABLE_RY = "trainable_ry_layers"

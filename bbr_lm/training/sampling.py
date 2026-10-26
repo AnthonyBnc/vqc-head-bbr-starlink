@@ -1,4 +1,4 @@
-"""Deterministic training-only window sampling for declared BBR ablations."""
+"""Optional training-window sampling plans (not used in the paper; the default uses all windows)."""
 
 from collections import Counter
 from hashlib import sha256
@@ -7,7 +7,7 @@ from pathlib import Path
 from pathlib import PurePosixPath
 import random
 
-from utils.bbr import ACTION_LEVELS, BBR_PHASES, BW_CRUISE, BW_DOWN, BW_UP
+from bbr_lm.bbr import ACTION_LEVELS, BBR_PHASES, BW_CRUISE, BW_DOWN, BW_UP
 
 
 TRAINING_SAMPLING_ORIGINAL = "original"

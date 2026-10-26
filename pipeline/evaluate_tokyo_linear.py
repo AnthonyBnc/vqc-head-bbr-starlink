@@ -1,4 +1,10 @@
-"""Run the frozen modern-model suite on the one-time Tokyo held-out pool."""
+"""Evaluate the frozen linear-head backbones on the Tokyo pool."""
+
+# Make the repository root importable when this file is run as a script.
+import sys as _sys
+from pathlib import Path as _Path
+
+_sys.path.insert(0, str(_Path(__file__).resolve().parents[1]))
 
 import argparse
 import csv
@@ -10,13 +16,13 @@ import pickle
 import torch
 
 from config import cfg
-from plm_special.backbones import load_local_backbone, resolve_local_revision
-from plm_special.data.dataset import ExperienceDataset
-from plm_special.models.rl_policy import OfflineRLPolicy
-from plm_special.models.state_encoder import EncoderNetwork
-from utils.bbr import ACTION_LEVELS
-from utils.checkpoint_freeze import file_sha256, verify_frozen_entry, write_json
-from utils.tokyo_evaluation import evaluate_frozen_policy
+from bbr_lm.models.backbones import load_local_backbone, resolve_local_revision
+from bbr_lm.data.dataset import ExperienceDataset
+from bbr_lm.models.policy import OfflineRLPolicy
+from bbr_lm.models.state_encoder import EncoderNetwork
+from bbr_lm.bbr import ACTION_LEVELS
+from bbr_lm.evaluation.checkpoint_freeze import file_sha256, verify_frozen_entry, write_json
+from bbr_lm.evaluation.tokyo import evaluate_frozen_policy
 
 
 def _hidden_size(model_config):
@@ -39,7 +45,7 @@ def load_frozen_modern_policy(entry, device, local_model_root):
         raise ValueError("Local backbone revision changed for {}".format(model_key))
     dtype = getattr(torch, run_manifest["dtype"])
     backbone, model_config = load_local_backbone(model_path, device=device, dtype=dtype)
-    from plm_special.lora import load_modern_lora_checkpoint
+    from bbr_lm.models.lora import load_modern_lora_checkpoint
 
     backbone, _, _ = load_modern_lora_checkpoint(
         backbone,

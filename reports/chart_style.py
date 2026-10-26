@@ -1,4 +1,4 @@
-"""Shared config, styling, and data loading for the under-400M chart scripts.
+"""Shared styling and data loading for the training figures.
 
 Not runnable on its own — imported by `generate_under400m_line_charts.py` and
 `generate_under400m_box_charts.py`.

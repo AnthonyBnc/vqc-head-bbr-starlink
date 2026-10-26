@@ -4,11 +4,10 @@ from config import cfg
 
 
 class ModernLoraConfigTests(unittest.TestCase):
-    UNDER_400M_MODEL_KEYS = {
+    PAPER_MODEL_KEYS = {
+        "lfm2_5_350m",
         "granite_4_0_350m",
         "pleias_rag_350m",
-        "lfm2_5_350m",
-        "granite_4_0_h_350m",
         "gemma_3_270m",
     }
 
@@ -18,21 +17,16 @@ class ModernLoraConfigTests(unittest.TestCase):
             set(cfg.modern_lora_registry),
         )
 
-    def test_under_400m_models_are_pinned_and_pending_smoke(self):
-        self.assertTrue(
-            self.UNDER_400M_MODEL_KEYS.issubset(cfg.modern_model_registry)
-        )
-        for model_key in self.UNDER_400M_MODEL_KEYS:
+    def test_paper_backbones_are_pinned(self):
+        self.assertEqual(set(cfg.modern_model_registry), self.PAPER_MODEL_KEYS)
+        for model_key in self.PAPER_MODEL_KEYS:
             with self.subTest(model_key=model_key):
-                model = cfg.modern_model_registry[model_key]
-                self.assertEqual(len(model["revision"]), 40)
-                self.assertEqual(model["loader_status"], "registered_pending_smoke")
+                self.assertEqual(len(cfg.modern_model_registry[model_key]["revision"]), 40)
 
-    def test_lora_defaults_are_explicit_and_exploratory(self):
-        self.assertGreater(cfg.lora_defaults["construction_rank"], 0)
-        self.assertGreater(cfg.lora_defaults["alpha"], 0)
-        self.assertGreaterEqual(cfg.lora_defaults["dropout"], 0.0)
-        self.assertIn("exploratory", cfg.lora_defaults["status"])
+    def test_lora_defaults_match_the_paper(self):
+        self.assertEqual(cfg.lora_defaults["construction_rank"], 128)
+        self.assertEqual(cfg.lora_defaults["alpha"], 32)
+        self.assertEqual(cfg.lora_defaults["dropout"], 0.05)
 
     def test_every_family_declares_expected_adapter_count(self):
         for model_key, family in cfg.modern_lora_registry.items():

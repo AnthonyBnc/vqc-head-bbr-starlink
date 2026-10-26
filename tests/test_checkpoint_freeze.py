@@ -3,7 +3,7 @@ from pathlib import Path
 import tempfile
 import unittest
 
-from utils.checkpoint_freeze import freeze_completed_run, verify_frozen_entry
+from bbr_lm.evaluation.checkpoint_freeze import freeze_completed_run, verify_frozen_entry
 
 
 class CheckpointFreezeTests(unittest.TestCase):

@@ -1,10 +1,10 @@
-"""Multi-seed gpt_classical vs gpt_quantum: train, freeze, evaluate on Tokyo.
+"""Step 6: multi-seed head comparison (train, freeze, evaluate on Tokyo).
 
 Purpose: repeat the LFM2.5-350M classical-head vs
 quantum-head comparison over several *training* seeds so training variance can
 be reported (mean +/- SD) instead of a single seed.
 
-What changes between seeds: only ``--seed`` passed to ``train_modern_lora.py``
+What changes between seeds: only ``--seed`` passed to ``pipeline/train.py``
 (LoRA/head initialisation, dropout, batch order). What does NOT change: the
 development split (``dev_split_seed100003``), labels, phase masks, windows, LoRA
 config, optimiser, 100-epoch budget, final-epoch checkpoint rule, Tokyo pool.
@@ -12,7 +12,7 @@ All of this is re-verified by SHA-256 before training and after every run.
 
 Checkpointing / resume
 ----------------------
-* ``train_modern_lora.py`` already saves a full checkpoint (adapter, head,
+* ``pipeline/train.py`` already saves a full checkpoint (adapter, head,
   optimiser, scheduler) after every epoch. If the run is interrupted (Ctrl+C,
   power, crash), simply run the same command again: each unfinished
   (seed, head) is resumed from its last completed epoch into a new
@@ -41,16 +41,16 @@ on Windows). Tokyo evaluation always runs alone, so latency stays comparable.
 Usage (lab machine, from the repo root)
 ---------------------------------------
     # 0) see what will run, without running anything
-    python run_multiseed_head_comparison.py run --dry-run
+    python pipeline/run_multiseed.py run --dry-run
 
     # 1) ~10 min: find the fastest number of concurrent trainings
-    python run_multiseed_head_comparison.py benchmark
+    python pipeline/run_multiseed.py benchmark
 
     # 2) run everything with the recommended N (e.g. 4)
-    python run_multiseed_head_comparison.py run --device cuda --parallel 4
+    python pipeline/run_multiseed.py run --device cuda --parallel 4
 
     # 3) progress at any time (from another terminal)
-    python run_multiseed_head_comparison.py status
+    python pipeline/run_multiseed.py status
 
     # 4) after all seeds: mean +/- SD table
     python reports/summarize_multiseed_head_comparison.py
@@ -58,6 +58,12 @@ Usage (lab machine, from the repo root)
 Interrupted? Run the same command again: every unfinished run resumes from its
 last completed epoch.
 """
+
+# Make the repository root importable when this file is run as a script.
+import sys as _sys
+from pathlib import Path as _Path
+
+_sys.path.insert(0, str(_Path(__file__).resolve().parents[1]))
 
 import argparse
 import csv
@@ -72,7 +78,7 @@ import sys
 import threading
 import time
 
-REPO = Path(__file__).resolve().parent
+REPO = Path(__file__).resolve().parents[1]
 
 # ----------------------------------------------------------------------------
 # Frozen protocol (copied from the seed-100003 run manifests in
@@ -333,8 +339,8 @@ def preflight(args):
             problems.append("Tokyo pool checksum is neither the original nor the verified rebuild")
         if not args.freeze_manifest.is_file():
             problems.append("missing freeze manifest {}".format(args.freeze_manifest))
-    if not (REPO / "train_modern_lora.py").is_file():
-        problems.append("run this script from the lm-bbr-starlink repo root")
+    if not (REPO / "pipeline/train.py").is_file():
+        problems.append("run this script from the repository root")
     try:
         dirty = subprocess.run(
             ["git", "status", "--porcelain", "--untracked-files=no"],
@@ -355,7 +361,7 @@ def preflight(args):
 # ----------------------------------------------------------------------------
 # training
 # ----------------------------------------------------------------------------
-# Runs train_modern_lora.py unchanged, after enabling cuDNN autotuning (kernel
+# Runs pipeline/train.py unchanged, after enabling cuDNN autotuning (kernel
 # choice only; no change to the model, data, precision or optimiser).
 _TRAIN_BOOTSTRAP = (
     "import runpy, sys, torch; "
@@ -367,9 +373,9 @@ _TRAIN_BOOTSTRAP = (
 
 def build_train_command(args, seed, head, output_dir, resume_from=None):
     if getattr(args, "cudnn_benchmark", True):
-        command = [sys.executable, "-u", "-c", _TRAIN_BOOTSTRAP, str(REPO / "train_modern_lora.py")]
+        command = [sys.executable, "-u", "-c", _TRAIN_BOOTSTRAP, str(REPO / "pipeline/train.py")]
     else:
-        command = [sys.executable, "-u", str(REPO / "train_modern_lora.py")]
+        command = [sys.executable, "-u", str(REPO / "pipeline/train.py")]
     command += COMMON_TRAIN_ARGS + HEAD_TRAIN_ARGS[head]
     command += [
         "--seed", str(seed),
@@ -613,10 +619,10 @@ def evaluate_one(args):
     import torch
 
     from config import cfg
-    from evaluate_tokyo_gpt_quantum import checkpoint_files_sha256, load_policy_from_run
-    from evaluate_tokyo_models import write_records
-    from plm_special.data.dataset import ExperienceDataset
-    from utils.tokyo_evaluation import evaluate_frozen_policy
+    from pipeline.evaluate_tokyo_vqc import checkpoint_files_sha256, load_policy_from_run
+    from pipeline.evaluate_tokyo_linear import write_records
+    from bbr_lm.data.dataset import ExperienceDataset
+    from bbr_lm.evaluation.tokyo import evaluate_frozen_policy
 
     frozen = read_json(args.output_dir / "frozen_checkpoint.json")
     checkpoint_dir = args.run_dir / "checkpoint"
